@@ -1,0 +1,7 @@
+.read drop.sql
+.read create.sql
+.separator <>
+.import load_files/item.dat item
+.import load_files/user.dat user
+.import load_files/category.dat category
+.import load_files/bid.dat bid

@@ -34,16 +34,20 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.ErrorHandler;
 
 
-class MyParserSkeleton {
+class Parser {
 
     // Any separator will do, but we recommend you do not use '|'
-    static final String columnSeparator = "<>";
+    static final String SEPARATOR = "<>";
+    static final String NULL_STRING = "NULL";
+    
+    
 
     static DocumentBuilder builder;
 
@@ -171,7 +175,7 @@ class MyParserSkeleton {
     }
 
     /* Process one items-???.xml file. */
-    static void processFile(File xmlFile) throws IOException {
+    static void processFile(File xmlFile, Writers w, Map<String, UserFields> m) throws IOException {
 
         Document doc = null;
         try {
@@ -195,11 +199,7 @@ class MyParserSkeleton {
         // Get the root of the tree
         Element root = doc.getDocumentElement();
 
-        /* 
-         * ##########
-         * TODO: Here you will process xmlFile
-         * ##########
-         */
+        translateFile(root, w, m);
 
     }
 
@@ -228,12 +228,17 @@ class MyParserSkeleton {
 
         /* Process each of the files */
         try {
+        	
+        	Writers w = new Writers();
+        	Map<String, UserFields> m = new HashMap<String, UserFields>();
 
             /* Process all files listed on command line. */
             for (int i = 0; i < args.length; i++) {
                 File currentFile = new File(args[i]);
-                processFile(currentFile);
+                processFile(currentFile, w, m);
             }
+            writeUserInfo(w, m);
+            w.close();
 
             // Success!
             System.out.println("Success creating the SQL input files.");
@@ -242,4 +247,173 @@ class MyParserSkeleton {
             System.err.println("Error: " + e.getMessage());
         }
     }
+    
+    
+    /* Data translation code*/
+    
+    private static class Writers {
+    	final PrintWriter item;
+    	final PrintWriter category;
+    	final PrintWriter user;
+    	final PrintWriter bid;
+    	
+    	static final int ITEM = 0;
+    	static final int CATEGORY = 1;
+    	static final int USER = 2;
+    	static final int BID = 3;
+    	
+    	static final String LOAD_DIRECTORY = "load_files";
+    	static final String ITEM_LOAD_FILE = "load_files/item.dat";
+    	static final String CATEGORY_LOAD_FILE = "load_files/category.dat";
+    	static final String USER_LOAD_FILE = "load_files/user.dat";
+    	static final String BID_LOAD_FILE = "load_files/bid.dat";
+    	
+    	
+    	private Writers() throws IOException { 	
+    		File dir = new File(LOAD_DIRECTORY);
+    		if(!dir.exists()) dir.mkdir();
+    		
+        	item = new PrintWriter(new FileWriter(ITEM_LOAD_FILE));
+        	category = new PrintWriter(new FileWriter(CATEGORY_LOAD_FILE));
+        	user = new PrintWriter(new FileWriter(USER_LOAD_FILE));
+        	bid = new PrintWriter(new FileWriter(BID_LOAD_FILE));
+    	}
+    	
+    	private void write(int table, String s) {
+    		PrintWriter w;
+    		switch(table) {
+    		case ITEM:
+    			w = item; break;
+    		case CATEGORY:
+    			w = category; break;
+    		case USER:
+    			w = user; break;
+    		case BID:
+    			w = bid; break;
+    		default:
+    			return;
+    		}
+    		w.println(s.replaceAll("\"",""));
+    	}
+    	
+    	private void close() {
+    		item.close();
+    		category.close();
+    		user.close();
+    		bid.close();
+    	}
+    }
+    
+    private static class UserFields {
+    	final String rating;
+    	final String location;
+		final String country;
+		
+    	private UserFields(String rating, String location, String country) {
+			this.rating = rating;
+			this.location = location;
+			this.country = country;
+		}
+    
+    	
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			UserFields other = (UserFields) obj;
+			if (country == null) {
+				if (other.country != null)
+					return false;
+			} else if (!country.equals(other.country))
+				return false;
+			if (location == null) {
+				if (other.location != null)
+					return false;
+			} else if (!location.equals(other.location))
+				return false;
+			if (rating == null) {
+				if (other.rating != null)
+					return false;
+			} else if (!rating.equals(other.rating))
+				return false;
+			return true;
+		}
+    	
+    }
+    
+    private static void translateFile(Element root, Writers w, Map<String, UserFields> userInfo) throws IOException {
+    	Element[] elements = getElementsByTagNameNR(root, "Item");
+    	
+    	for(Element e : elements) {
+    		processItem(e, w, userInfo);
+    	}
+    }
+    
+    private static void processItem(Element item, Writers w, Map<String, UserFields> userInfo) {
+    	String id = item.getAttribute("ItemID");
+    	Element seller = getElementByTagNameNR(item, "Seller");
+    	w.write(Writers.ITEM, 
+    			id + SEPARATOR + 
+    			getElementTextByTagNameNR(item, "Name") + SEPARATOR +
+    			formatDollar(getElementTextByTagNameNR(item, "Currently")) + SEPARATOR + 
+    			checkNull(formatDollar(getElementTextByTagNameNR(item, "Buy_Price"))) + SEPARATOR + 
+    			formatDollar(getElementTextByTagNameNR(item, "First_Bid")) + SEPARATOR +
+    			getElementTextByTagNameNR(item, "Number_of_Bids") + SEPARATOR +
+    			formatTime(getElementTextByTagNameNR(item, "Started")) + SEPARATOR + 
+    			formatTime(getElementTextByTagNameNR(item, "Ends")) + SEPARATOR + 
+    			seller.getAttribute("UserID") + SEPARATOR +
+    			getElementTextByTagNameNR(item, "Description"));  
+    	mergeUser(seller.getAttribute("UserID"),
+    			seller.getAttribute("Rating"),
+    			getElementTextByTagNameNR(item, "Location"),
+    			getElementTextByTagNameNR(item, "Country"), userInfo);
+    	for(Element c : getElementsByTagNameNR(item, "Category")) {
+    		w.write(Writers.CATEGORY, id + SEPARATOR + getElementText(c));
+    	}
+    	Element bids = getElementByTagNameNR(item, "Bids");
+    	for(Element b : getElementsByTagNameNR(bids, "Bid")) {
+    		Element bidder = getElementByTagNameNR(b, "Bidder");
+    		w.write(Writers.BID,
+    				id + SEPARATOR + 
+    				bidder.getAttribute("UserID") + SEPARATOR +
+    				formatTime(getElementTextByTagNameNR(b, "Time")) + SEPARATOR +
+    				formatDollar(getElementTextByTagNameNR(b, "Amount")) + SEPARATOR + 
+    				((getElementTextByTagNameNR(bidder, "Location") == null) ? 1 : 0));
+    		mergeUser(bidder.getAttribute("UserID"),
+    				bidder.getAttribute("Rating"),
+    				getElementTextByTagNameNR(bidder, "Location"),
+    				getElementTextByTagNameNR(bidder, "Country"), userInfo);
+    	}
+    }
+    
+    private static void writeUserInfo(Writers w, Map<String, UserFields> userInfo) {
+    	for(String id : userInfo.keySet()) {
+    		UserFields fields = userInfo.get(id);
+    		w.write(Writers.USER,
+    				id + SEPARATOR + checkNull(fields.rating) + SEPARATOR +
+    				checkNull(fields.location) + SEPARATOR + checkNull(fields.country));
+    	}
+    }
+    
+    private static void mergeUser(String userID, String rating, String loc, String country,
+    								Map<String, UserFields> m) {
+    	UserFields info = m.get(userID);
+    	if(info != null) {
+    		if(!(info.location == null && loc != null) &&
+    				!(info.country == null && country != null)) return;
+    	}
+    	m.put(userID, new UserFields(rating, loc, country));
+    }
+    
+    private static String checkNull(String s){
+    	return (s == null) ? NULL_STRING : s;
+    }
+    											
+    
+
+    
 }

@@ -1,9 +1,9 @@
 JC = javac
 
-all: MyParserSkeleton.class
+all: Parser.class
 
-MyParserSkeleton.class: MyParserSkeleton.java
-	$(JC) MyParserSkeleton.java
+Parser.class: Parser.java
+	$(JC) Parser.java
 
 clean:
 	rm -rf *.class
