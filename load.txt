@@ -5,3 +5,7 @@
 .import load_files/user.dat user
 .import load_files/category.dat category
 .import load_files/bid.dat bid
+UPDATE user SET rating = null WHERE rating = "NULL";
+UPDATE user SET location = null WHERE location = "NULL";
+UPDATE user SET country = null WHERE country = "NULL";
+UPDATE item SET buy_price = null WHERE buy_price = 0;

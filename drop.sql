@@ -1,8 +1,8 @@
 -- Delete all databases
 
-DROP TABLE Item;
-DROP TABLE Category;
-DROP TABLE User;
-DROP TABLE Bid;
+DROP TABLE IF EXISTS Item;
+DROP TABLE IF EXISTS Category;
+DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS Bid;
 
 	

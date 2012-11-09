@@ -1,6 +1,6 @@
 make clean
 make all
-java Parser /usr/class/cs145/project/ebay_data/items-*.xml
+java Parser ebay_data/items-*.xml
 sort -o load_files/category.dat load_files/category.dat
 uniq load_files/category.dat > load_files/tempCAT0
 mv load_files/tempCAT0 load_files/category.dat

@@ -1,0 +1,12 @@
+ALTER TABLE Item
+ADD CHECK (end_time >= (SELECT max(time) FROM Bid b 		WHERE id = b.item_id);
+ALTER TABLE Item
+ADD CONSTRAINT chk_start_time
+	CHECK (start_time <= (SELECT min(time) FROM Bid b WHERE id = b.item_id);
+	
+ALTER TABLE Bid
+ADD CONSTRAINT chk_updating_time
+	CHECK (time > (SELECT MAX(time) FROM Bid b WHERE item_id = b.item_id);
+ALTER TABLE Bid
+ADD CONSTRAINT chk_increasing_amount
+	CHECK (amount > (SELECT MAX(amount) FROM Bid b WHERE item_id = b.item_id);

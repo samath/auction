@@ -34,7 +34,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
@@ -136,14 +135,14 @@ class Parser {
         if (elem != null)
             return getElementText(elem);
         else
-            return "";
+            return NULL_STRING;
     }
 
     /* Returns the amount (in XXXXX.xx format) denoted by a dollar-value
      * string like $3,453.23. Returns the input if the input is an empty
      * string. */
     static String formatDollar(String money) {
-        if (money.equals(""))
+        if (money.equals("") || money.equals(NULL_STRING))
             return money;
         else {
             double am = 0.0;
@@ -175,7 +174,7 @@ class Parser {
     }
 
     /* Process one items-???.xml file. */
-    static void processFile(File xmlFile, Writers w, Map<String, UserFields> m) throws IOException {
+    static void processFile(File xmlFile, Writers w, Map<String, UserFields> m) {
 
         Document doc = null;
         try {
@@ -345,7 +344,7 @@ class Parser {
     	
     }
     
-    private static void translateFile(Element root, Writers w, Map<String, UserFields> userInfo) throws IOException {
+    private static void translateFile(Element root, Writers w, Map<String, UserFields> userInfo) {
     	Element[] elements = getElementsByTagNameNR(root, "Item");
     	
     	for(Element e : elements) {
@@ -360,9 +359,9 @@ class Parser {
     			id + SEPARATOR + 
     			getElementTextByTagNameNR(item, "Name") + SEPARATOR +
     			formatDollar(getElementTextByTagNameNR(item, "Currently")) + SEPARATOR + 
-    			checkNull(formatDollar(getElementTextByTagNameNR(item, "Buy_Price"))) + SEPARATOR + 
     			formatDollar(getElementTextByTagNameNR(item, "First_Bid")) + SEPARATOR +
     			getElementTextByTagNameNR(item, "Number_of_Bids") + SEPARATOR +
+    			formatDollar(getElementTextByTagNameNR(item, "Buy_Price")) + SEPARATOR + 
     			formatTime(getElementTextByTagNameNR(item, "Started")) + SEPARATOR + 
     			formatTime(getElementTextByTagNameNR(item, "Ends")) + SEPARATOR + 
     			seller.getAttribute("UserID") + SEPARATOR +
@@ -382,7 +381,7 @@ class Parser {
     				bidder.getAttribute("UserID") + SEPARATOR +
     				formatTime(getElementTextByTagNameNR(b, "Time")) + SEPARATOR +
     				formatDollar(getElementTextByTagNameNR(b, "Amount")) + SEPARATOR + 
-    				((getElementTextByTagNameNR(bidder, "Location") == null) ? 1 : 0));
+    				((getElementTextByTagNameNR(bidder, "Location").equals(NULL_STRING)) ? 0 : 1));
     		mergeUser(bidder.getAttribute("UserID"),
     				bidder.getAttribute("Rating"),
     				getElementTextByTagNameNR(bidder, "Location"),
@@ -394,8 +393,8 @@ class Parser {
     	for(String id : userInfo.keySet()) {
     		UserFields fields = userInfo.get(id);
     		w.write(Writers.USER,
-    				id + SEPARATOR + checkNull(fields.rating) + SEPARATOR +
-    				checkNull(fields.location) + SEPARATOR + checkNull(fields.country));
+    				id + SEPARATOR + fields.rating + SEPARATOR +
+    				fields.location + SEPARATOR + fields.country);
     	}
     }
     
@@ -403,14 +402,10 @@ class Parser {
     								Map<String, UserFields> m) {
     	UserFields info = m.get(userID);
     	if(info != null) {
-    		if(!(info.location == null && loc != null) &&
-    				!(info.country == null && country != null)) return;
+    		if(!(info.location.equals(NULL_STRING) && !loc.equals(NULL_STRING)) &&
+    				!(info.country.equals(NULL_STRING) && !country.equals(NULL_STRING))) return;
     	}
     	m.put(userID, new UserFields(rating, loc, country));
-    }
-    
-    private static String checkNull(String s){
-    	return (s == null) ? NULL_STRING : s;
     }
     											
     

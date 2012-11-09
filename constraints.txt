@@ -1,0 +1,15 @@
+1.  Item ids are unique. K
+2.  Items in the category table must be items. R
+3.  Items in the bid table must be items. R
+4.  The current bid must be at least the first bid. C
+5.  The current bid must be equal to the max of all bids on that item or the first bid.
+6.  Bids must be increasing in size. C
+7.  The bid count must match the actual number of bids for that item. 
+8.  Bids must occur after the start of the auction. C
+9.  Bids must occur before the end of the auction. C
+10. Each item/category pair should occur at most once. K
+11. User ids are unique. K
+12. Sellers must be users. R
+13. Bidders must be users. R
+14. No auction can have multiple bids at the same time. K
+ 
